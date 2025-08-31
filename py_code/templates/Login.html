@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Truck Sales Admin Login</title>
+    <link rel="icon" href="{{ url_for('static',filename='logo.webp')}}">
+    <link rel="stylesheet" href="{{ url_for('static',filename='style.css')}}">
+</head>
+<body>
+   <div class="Login">
+       <h2>Truck Sales Login</h2>
+       {% if error %}
+           <p style="color: white;">{{ error }}</p>
+       {% endif %}
+
+       <form id="loginForm" action="/Confirm" method="POST">
+           <div class="ip">
+               <label for="Uname">User Name:</label>
+               <input type="text" id="Uname" name="Uname" required>
+           </div>
+           <br>
+           <div class="ip1">
+             <label for="pass">Password:</label>
+             <input type="password" id="pass" name="pass" required>
+           </div>
+           <br>
+           <div class="sbtn">
+            <button value="Sub" type="submit">Submit</button>
+            <button type="reset">Clear</button>
+           </div>
+       </form>
+   </div>
+
+   <script>
+   document.addEventListener('DOMContentLoaded', () => {
+       const inputs = Array.from(document.querySelectorAll('#loginForm input'));
+       inputs.forEach((input, index) => {
+           input.addEventListener('keydown', (event) => {
+               if (event.key === 'Enter') {
+                   event.preventDefault();
+                   const nextInput = inputs[index + 1];
+                   if (nextInput) {
+                       nextInput.focus();
+                   } else {
+                       document.querySelector('button[type="submit"]').focus();
+                   }
+               }
+           });
+       });
+   });
+   </script>
+</body>
+</html>

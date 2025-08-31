@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Truck Comparison</title>
+    <link rel="icon" href="{{ url_for('static',filename='logo.webp')}}">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            background-image: url('https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&q=80');
+            background-size: cover;
+            background-position: center;
+            position: relative;
+        }
+        body::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1;
+        }
+        .content {
+            position: relative;
+            z-index: 2;
+        }
+        .comparison-modal {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 1000;
+            width: 90%;
+            max-width: 850px;
+        }
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 999;
+        }
+        select:disabled {
+            background-color: #f3f4f6;
+            cursor: not-allowed;
+        }
+        .error-message {
+            color: red;
+            font-size: 0.875rem;
+            margin-top: 0.5rem;
+            display: none;
+        }
+        .truck-image {
+            min-height: 150px;
+            background-color: #f0f0f0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #666;
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center">
+    <div class="content w-full min-h-screen flex flex-col items-center justify-center p-8">
+        <div style="position: absolute; top: 20px; right: 20px;">
+            <button onclick="window.location.href='{{ url_for('dashboard') }}'"
+                    style="padding: 10px 20px; margin-right: 10px; background-color: #1E90FF; color: white; border: none; border-radius: 8px; cursor: pointer;">
+                Back to Dashboard
+            </button>
+            <button onclick="window.location.href='{{ url_for('login') }}'"
+                    style="padding: 10px 20px; background-color: #f04e4e; color: white; border: none; border-radius: 8px; cursor: pointer;">
+                Back to Login
+            </button>
+        </div>
+
+        <h1 class="text-4xl font-bold text-white mb-8">Truck Comparison</h1>
+
+        <div class="flex space-x-6 mb-8">
+            {% set brands = brands or [] %}
+            {% set brand_model_map = brand_model_map or {} %}
+            <!-- Brand/Model selectors: dynamic from DB data -->
+            <div class="bg-white p-6 rounded-lg shadow-md flex flex-col items-center space-y-4 w-72">
+                <p class="text-gray-600 font-medium">Add truck</p>
+                <select class="border border-gray-300 rounded-md p-2 w-full bg-white" id="brand1" onchange="updateModels(1)">
+                    <option value="">Select Brand</option>
+                    {% for brand in brands %}
+                        <option value="{{ brand }}">{{ brand }}</option>
+                    {% endfor %}
+                </select>
+                <select class="border border-gray-300 rounded-md p-2 w-full bg-white" id="model1" disabled>
+                    <option value="">Select Model</option>
+                </select>
+                <div class="error-message" id="error1">Please select a different model</div>
+            </div>
+            <div class="bg-white p-6 rounded-lg shadow-md flex flex-col items-center space-y-4 w-72">
+                <p class="text-gray-600 font-medium">Add truck</p>
+                <select class="border border-gray-300 rounded-md p-2 w-full bg-white" id="brand2" onchange="updateModels(2)">
+                    <option value="">Select Brand</option>
+                    {% for brand in brands %}
+                        <option value="{{ brand }}">{{ brand }}</option>
+                    {% endfor %}
+                </select>
+                <select class="border border-gray-300 rounded-md p-2 w-full bg-white" id="model2" disabled>
+                    <option value="">Select Model</option>
+                </select>
+                <div class="error-message" id="error2">Please select a different model</div>
+            </div>
+        </div>
+
+        <button onclick="compareTrucks()" id="compareButton" class="px-8 py-3 rounded-md shadow-md text-white font-medium text-lg bg-gray-400 cursor-not-allowed" disabled>
+            Compare Trucks
+        </button>
+    </div>
+
+    <div class="modal-overlay" id="modalOverlay" onclick="closeModal()"></div>
+    <div class="comparison-modal bg-white rounded-lg shadow-xl" id="comparisonModal">
+        <div class="p-6">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold">Truck Comparison</h2>
+                <button onclick="closeModal()" class="text-gray-500 hover:text-gray-700">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="grid grid-cols-3 gap-4">
+                <div class="col-span-1 font-medium">Image</div>
+                <div class="col-span-1 flex justify-center">
+                    <div id="imgContainer1" class="truck-image w-full max-w-48 rounded-lg shadow-md"></div>
+                </div>
+                <div class="col-span-1 flex justify-center">
+                    <div id="imgContainer2" class="truck-image w-full max-w-48 rounded-lg shadow-md"></div>
+                </div>
+                <div class="col-span-1 font-medium">Specification</div>
+                <div class="col-span-1 text-center font-medium" id="truck1Title">Truck 1</div>
+                <div class="col-span-1 text-center font-medium" id="truck2Title">Truck 2</div>
+                <div class="col-span-1">Price</div>
+                <div class="col-span-1 text-center" id="price1">-</div>
+                <div class="col-span-1 text-center" id="price2">-</div>
+                <div class="col-span-1">Fuel Type</div>
+                <div class="col-span-1 text-center" id="fuel1">-</div>
+                <div class="col-span-1 text-center" id="fuel2">-</div>
+                <div class="col-span-1">Truck Type</div>
+                <div class="col-span-1 text-center" id="type1">-</div>
+                <div class="col-span-1 text-center" id="type2">-</div>
+                <div class="col-span-1">Engine Power (bhp)</div>
+                <div class="col-span-1 text-center" id="engine1">-</div>
+                <div class="col-span-1 text-center" id="engine2">-</div>
+                <div class="col-span-1">Load Capacity (tons)</div>
+                <div class="col-span-1 text-center" id="load1">-</div>
+                <div class="col-span-1 text-center" id="load2">-</div>
+                <div class="col-span-1">No. of Axles</div>
+                <div class="col-span-1 text-center" id="axles1">-</div>
+                <div class="col-span-1 text-center" id="axles2">-</div>
+                <div class="col-span-1">Mileage (km/l)</div>
+                <div class="col-span-1 text-center" id="mileage1">-</div>
+                <div class="col-span-1 text-center" id="mileage2">-</div>
+                <div class="col-span-1">Seating Capacity</div>
+                <div class="col-span-1 text-center" id="seats1">-</div>
+                <div class="col-span-1 text-center" id="seats2">-</div>
+            </div>
+        </div>
+    </div>
+
+<script>
+const brandModelMap = {{ brand_model_map|tojson }};
+
+function updateModels(selectorNum) {
+    const brandSelect = document.getElementById(`brand${selectorNum}`);
+    const modelSelect = document.getElementById(`model${selectorNum}`);
+    const selectedBrand = brandSelect.value;
+    modelSelect.innerHTML = '<option value="">Select Model</option>';
+    modelSelect.disabled = !selectedBrand;
+    if (selectedBrand && brandModelMap[selectedBrand]) {
+        brandModelMap[selectedBrand].forEach(model => {
+            const option = document.createElement('option');
+            option.value = model;
+            option.textContent = model;
+            modelSelect.appendChild(option);
+        });
+    }
+    updateCompareButton();
+}
+
+function updateCompareButton() {
+    const brand1 = document.getElementById('brand1').value;
+    const model1 = document.getElementById('model1').value;
+    const brand2 = document.getElementById('brand2').value;
+    const model2 = document.getElementById('model2').value;
+    const compareButton = document.getElementById('compareButton');
+    const error1 = document.getElementById('error1');
+    const error2 = document.getElementById('error2');
+    const sameTruckSelected = brand1 && model1 && brand2 && model2 && brand1 === brand2 && model1 === model2;
+    if (sameTruckSelected) {
+        error1.style.display = 'block';
+        error2.style.display = 'block';
+        compareButton.disabled = true;
+        compareButton.className = 'px-8 py-3 rounded-md shadow-md text-white font-medium text-lg bg-gray-400 cursor-not-allowed';
+        return;
+    } else {
+        error1.style.display = 'none';
+        error2.style.display = 'none';
+    }
+    const canCompare = brand1 && model1 && brand2 && model2 && !sameTruckSelected;
+    compareButton.disabled = !canCompare;
+    compareButton.className = `px-8 py-3 rounded-md shadow-md text-white font-medium text-lg ${
+        canCompare
+            ? 'bg-green-500 hover:bg-green-600 cursor-pointer'
+            : 'bg-gray-400 cursor-not-allowed'
+    }`;
+}
+
+async function getTruckSpecs(brand, model) {
+    const response = await fetch("/get_truck_specs", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({ brand, model })
+    });
+    if (!response.ok) return null;
+    return await response.json();
+}
+
+async function compareTrucks() {
+    const brand1 = document.getElementById('brand1').value;
+    const model1 = document.getElementById('model1').value;
+    const brand2 = document.getElementById('brand2').value;
+    const model2 = document.getElementById('model2').value;
+    if (brand1 === brand2 && model1 === model2) return;
+
+    // Fetch both truck specs from backend
+    const [truck1, truck2] = await Promise.all([
+        getTruckSpecs(brand1, model1),
+        getTruckSpecs(brand2, model2)
+    ]);
+
+    document.getElementById('truck1Title').textContent = truck1 ? `${truck1.truck_name} ${truck1.truck_model}` : "Truck 1";
+    document.getElementById('truck2Title').textContent = truck2 ? `${truck2.truck_name} ${truck2.truck_model}` : "Truck 2";
+
+    // Show images by truck_id
+    document.getElementById('imgContainer1').innerHTML = `<img src="/static/truck_images/${truck1 ? truck1.truck_id : 'truck'}.jpg" class="w-full max-w-48 h-auto rounded-lg shadow-md" alt="Truck 1" onerror="this.src='/static/truck_images/truck.jpg'"/>`;
+    document.getElementById('imgContainer2').innerHTML = `<img src="/static/truck_images/${truck2 ? truck2.truck_id : 'truck'}.jpg" class="w-full max-w-48 h-auto rounded-lg shadow-md" alt="Truck 2" onerror="this.src='/static/truck_images/truck.jpg'"/>`;
+
+    // Fill all technical specs
+    document.getElementById('price1').textContent     = truck1 ? `₹${truck1.price.toLocaleString()}` : "-";
+    document.getElementById('price2').textContent     = truck2 ? `₹${truck2.price.toLocaleString()}` : "-";
+    document.getElementById('fuel1').textContent      = truck1 ? truck1.fuel_type : "-";
+    document.getElementById('fuel2').textContent      = truck2 ? truck2.fuel_type : "-";
+    document.getElementById('type1').textContent      = truck1 ? truck1.truck_type : "-";
+    document.getElementById('type2').textContent      = truck2 ? truck2.truck_type : "-";
+    document.getElementById('engine1').textContent    = truck1 ? truck1.engine_power : "-";
+    document.getElementById('engine2').textContent    = truck2 ? truck2.engine_power : "-";
+    document.getElementById('load1').textContent      = truck1 ? truck1.load_capacity : "-";
+    document.getElementById('load2').textContent      = truck2 ? truck2.load_capacity : "-";
+    document.getElementById('axles1').textContent     = truck1 ? truck1.num_of_axles : "-";
+    document.getElementById('axles2').textContent     = truck2 ? truck2.num_of_axles : "-";
+    document.getElementById('mileage1').textContent   = truck1 ? truck1.mileage : "-";
+    document.getElementById('mileage2').textContent   = truck2 ? truck2.mileage : "-";
+    document.getElementById('seats1').textContent     = truck1 ? truck1.seating_capacity : "-";
+    document.getElementById('seats2').textContent     = truck2 ? truck2.seating_capacity : "-";
+
+    document.getElementById('modalOverlay').style.display = 'block';
+    document.getElementById('comparisonModal').style.display = 'block';
+}
+
+function closeModal() {
+    document.getElementById('modalOverlay').style.display = 'none';
+    document.getElementById('comparisonModal').style.display = 'none';
+}
+document.getElementById('model1').addEventListener('change', updateCompareButton);
+document.getElementById('model2').addEventListener('change', updateCompareButton);
+</script>
+</body>
+</html>
